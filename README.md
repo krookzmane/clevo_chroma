@@ -12,8 +12,7 @@ Might set your keyboard on fire. Probably not, but hey, I warned ya.
 * **Random Flash**: Just flashes random colors.
 * **Speed Control**: Adjust how fast things happen.
 * **Color Preview**: See the color before it hits your keyboard.
-* **Resizable UI**: Because fixed windows are from 2005.
-
+  
 ## Requirements
 * Linux
 * Python 3 (if running from source)
