@@ -17,10 +17,10 @@ capture_tools = ["gnome-screenshot"]
 available_tools = [tool for tool in capture_tools if shutil.which(tool)]
 
 if not available_tools:
-    print("Attention : Aucun outil de capture d'écran trouvé.")
-    print("Pour le mode Ambilight, installez l'outil suivant :")
+    print("Warning: No screen capture tool found.")
+    print("For Ambilight mode, please install the following tool:")
     print("- gnome-screenshot: sudo apt install gnome-screenshot")
-    
+
 BRIGHTNESS_VALUE = 255
 KB_PATH = "/sys/class/leds/rgb:kbd_backlight"
 BRIGHTNESS_F = f"{KB_PATH}/brightness"
@@ -32,13 +32,13 @@ class KbdRGBController:
         self.run = False
         self.thread = None
         self.delay = 0.001
-        self.mode = "Cycle fluide"
+        self.mode = "Fluid Cycle"
         self.static_rgb = (255, 0, 0)
         self.app = app_inst
         self.use_sudo = False
         self.sudo_process = None
         self._test_write_permissions()
-        
+
         self.last_ambilight_color = (0, 0, 0)
         self.ambilight_running = False
         self.ambilight_thread = None
@@ -48,22 +48,22 @@ class KbdRGBController:
         self.ambilight_target_fps = 30
 
     def _test_write_permissions(self):
-        """Teste si on peut écrire directement ou si sudo est nécessaire"""
+        """Tests if direct writing is possible or if sudo is required"""
         test_file = MULTI_INTENSITY_F
         try:
             with open(test_file, 'w') as f:
                 f.write("0 0 0")
             self.use_sudo = False
-            print("✓ Écriture directe possible (permissions OK)")
+            print("✓ Direct write possible (permissions OK)")
         except PermissionError:
             self.use_sudo = True
-            print("⚠ Sudo requis pour l'écriture")
+            print("⚠ Sudo required for writing")
         except Exception as e:
-            print(f"Erreur lors du test de permissions: {e}")
+            print(f"Error during permissions test: {e}")
             self.use_sudo = True
     
     def _setup_sudo_session(self):
-        """Prépare une session sudo persistante pour éviter les multiples prompts"""
+        """Prepares a persistent sudo session to avoid multiple prompts"""
         if not self.use_sudo:
             return True
             
@@ -71,28 +71,28 @@ class KbdRGBController:
             result = subprocess.run(['sudo', '-n', 'true'], 
                                     capture_output=True, timeout=1)
             if result.returncode == 0:
-                print("✓ Session sudo déjà active")
+                print("✓ Sudo session already active")
                 return True
             else:
-                print("Authentification sudo requise...")
+                print("Sudo authentication required...")
                 result = subprocess.run(['sudo', 'true'], timeout=30)
                 return result.returncode == 0
         except subprocess.TimeoutExpired:
-            print("Timeout lors de l'authentification sudo")
+            print("Timeout during sudo authentication")
             return False
         except Exception as e:
-            print(f"Erreur setup sudo: {e}")
+            print(f"Sudo setup error: {e}")
             return False
 
     def w_sysfs(self, f_path, val):
-        """Écriture optimisée dans sysfs"""
+        """Optimized writing to sysfs"""
         if not self.use_sudo:
             try:
                 with open(f_path, 'w') as f:
                     f.write(str(val))
                 return True
             except Exception as e:
-                print(f"Erreur écriture directe {f_path}: {e}")
+                print(f"Direct write error {f_path}: {e}")
                 return False
         else:
             try:
@@ -101,21 +101,21 @@ class KbdRGBController:
                                         capture_output=True, timeout=2)
                 return result.returncode == 0
             except subprocess.TimeoutExpired:
-                print(f"Timeout sudo pour {f_path}")
+                print(f"Sudo timeout for {f_path}")
                 return False
             except Exception as e:
-                print(f"Erreur sudo pour {f_path}: {e}")
+                print(f"Sudo error for {f_path}: {e}")
                 return False
 
     def w_sysfs_batch(self, values_dict):
-        """Écriture en batch pour plusieurs fichiers (plus efficace)"""
+        """Batch writing for multiple files (more efficient)"""
         if not self.use_sudo:
             for f_path, val in values_dict.items():
                 try:
                     with open(f_path, 'w') as f:
                         f.write(str(val))
                 except Exception as e:
-                    print(f"Erreur batch {f_path}: {e}")
+                    print(f"Batch error {f_path}: {e}")
                     return False
             return True
         else:
@@ -129,14 +129,14 @@ class KbdRGBController:
                                         capture_output=True, timeout=3)
                 return result.returncode == 0
             except Exception as e:
-                print(f"Erreur batch sudo: {e}")
+                print(f"Sudo batch error: {e}")
                 return False
 
     def init_kbd(self):
-        print("Initialisation du clavier...")
+        print("Initializing keyboard...")
         
         if self.use_sudo and not self._setup_sudo_session():
-            error_msg = "Impossible d'obtenir les privilèges sudo nécessaires"
+            error_msg = "Could not get the necessary sudo privileges"
             GLib.idle_add(lambda: self.app.show_err(error_msg))
             return False
         
@@ -147,9 +147,9 @@ class KbdRGBController:
         
         success = self.w_sysfs_batch(init_values)
         if success:
-            print("✓ Clavier initialisé avec succès")
+            print("✓ Keyboard successfully initialized")
         else:
-            print("✗ Erreur lors de l'initialisation")
+            print("✗ Error during initialization")
         
         time.sleep(0.1)
         return success
@@ -158,7 +158,7 @@ class KbdRGBController:
         if self.run:
             self.run = False
             self.thread.join()
-            print("Cycle arrêté.")
+            print("Cycle stopped.")
         
         if self.ambilight_running:
             self.ambilight_running = False
@@ -166,11 +166,11 @@ class KbdRGBController:
                 self.ambilight_capture_thread.join()
             if self.ambilight_thread:
                 self.ambilight_thread.join()
-            print("Mode Ambilight arrêté.")
+            print("Ambilight mode stopped.")
 
     def start_cycle(self):
         if self.run or self.ambilight_running:
-            print("Le cycle est déjà en cours.")
+            print("Cycle is already running.")
             return
 
         self.run = True
@@ -184,12 +184,12 @@ class KbdRGBController:
             self.ambilight_thread = threading.Thread(target=self._ambilight_color_loop)
             self.ambilight_thread.daemon = True
             self.ambilight_thread.start()
-            print(f"Mode '{self.mode}' démarré.")
+            print(f"'{self.mode}' mode started.")
         else:
             self.thread = threading.Thread(target=self._run_mode)
             self.thread.daemon = True
             self.thread.start()
-            print(f"Mode '{self.mode}' démarré.")
+            print(f"'{self.mode}' mode started.")
 
     def _set_col(self, r, g, b):
         r, g, b = max(0, min(255, int(r))), max(0, min(255, int(g))), max(0, min(255, int(b)))
@@ -217,19 +217,19 @@ class KbdRGBController:
 
     def _run_mode(self):
         try:
-            if self.mode == "Cycle fluide":
+            if self.mode == "Fluid Cycle":
                 self._col_cycle_loop()
-            elif self.mode == "Couleur statique":
+            elif self.mode == "Static Color":
                 self._static_col_loop()
-            elif self.mode == "Respiration":
+            elif self.mode == "Breathing":
                 self._breathing_loop()
-            elif self.mode == "Vague arc-en-ciel":
+            elif self.mode == "Rainbow Wave":
                 self._rainbow_wave_loop()
-            elif self.mode == "Flash aléatoire":
+            elif self.mode == "Random Flash":
                 self._random_flash_loop()
         except Exception as e:
-            print(f"Erreur dans le mode {self.mode}: {e}", file=sys.stderr)
-            GLib.idle_add(lambda: self.app.show_err(f"Erreur dans le mode {self.mode}: {e}"))
+            print(f"Error in {self.mode} mode: {e}", file=sys.stderr)
+            GLib.idle_add(lambda: self.app.show_err(f"Error in {self.mode} mode: {e}"))
             self.run = False
 
     def _col_cycle_loop(self):
@@ -310,14 +310,14 @@ class KbdRGBController:
             time.sleep(self.delay * 200)
 
     def _ambilight_capture_loop(self):
-        """Thread dédié pour la capture, optimisé pour la vitesse"""
+        """Dedicated thread for capture, optimized for speed"""
         temp_file = '/tmp/ambilight_temp.jpg'
         
-        print("Capture de l'écran entier pour le mode Ambilight...")
+        print("Capturing the entire screen for Ambilight mode...")
         
         while self.ambilight_running:
             try:
-                # Capture l'écran entier sans l'option --area pour éviter l'invite
+                # Capture the entire screen without the --area option to avoid the prompt
                 cmd = ['gnome-screenshot', '--file', temp_file]
                 subprocess.run(cmd, check=True, timeout=3)
                 
@@ -327,19 +327,19 @@ class KbdRGBController:
                             self.last_captured_image_data = f.read()
                     os.remove(temp_file)
                 else:
-                    raise FileNotFoundError("Le fichier de capture est vide ou manquant.")
+                    raise FileNotFoundError("The capture file is empty or missing.")
             except subprocess.CalledProcessError as e:
-                print(f"Erreur de capture avec gnome-screenshot: {e}", file=sys.stderr)
+                print(f"Capture error with gnome-screenshot: {e}", file=sys.stderr)
             except subprocess.TimeoutExpired:
-                print("Timeout lors de la capture d'écran", file=sys.stderr)
+                print("Timeout during screen capture", file=sys.stderr)
             except Exception as e:
-                print(f"Erreur inattendue dans la capture: {e}", file=sys.stderr)
+                print(f"Unexpected error in capture: {e}", file=sys.stderr)
             
             time.sleep(1.0 / self.ambilight_target_fps)
 
 
     def _ambilight_color_loop(self):
-        """Thread pour l'application des couleurs"""
+        """Thread for applying colors"""
         last_r, last_g, last_b = self.last_ambilight_color
         
         while self.ambilight_running:
@@ -353,12 +353,12 @@ class KbdRGBController:
                         if img.mode != 'RGB':
                             img = img.convert('RGB')
                         
-                        # Traiter uniquement les 200 pixels du bas
+                        # Process only the bottom 200 pixels
                         height_to_process = 200
                         height_img = img.height
                         
                         if height_img > height_to_process:
-                            # Découper la partie basse de l'image
+                            # Crop the bottom part of the image
                             img = img.crop((0, height_img - height_to_process, img.width, height_img))
                             
                         pixels = img.load()
@@ -379,9 +379,9 @@ class KbdRGBController:
                         self.last_captured_image_data = None
                         
                     except Exception as e:
-                        print(f"Erreur traitement image: {e}", file=sys.stderr)
+                        print(f"Image processing error: {e}", file=sys.stderr)
 
-            # Animation de transition fluide
+            # Fluid transition animation
             steps = 5 
             step_r = (new_r - last_r) / steps
             step_g = (new_g - last_g) / steps
@@ -411,7 +411,7 @@ class App(Gtk.Window):
         self.ctrl = KbdRGBController(self)
 
         if not all(map(os.path.exists, [BRIGHTNESS_F, MULTI_IDX_F, MULTI_INTENSITY_F])):
-            error_msg = f"Erreur : fichiers de contrôle du clavier manquants.\nChemin recherché: {KB_PATH}\nVérifiez que :\n1. Vous avez un clavier Clevo supporté\n2. Les pilotes sont installés\n3. Vous lancez le script avec sudo"
+            error_msg = f"Error: Missing keyboard control files.\nPath searched: {KB_PATH}\nCheck that:\n1. You have a supported Clevo keyboard\n2. The drivers are installed\n3. You are running the script with sudo"
             self.show_err(error_msg)
             return
         
@@ -421,7 +421,7 @@ class App(Gtk.Window):
         main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
         self.add(main_box)
         
-        # Grid pour les contrôles de base
+        # Grid for basic controls
         base_grid = Gtk.Grid(column_homogeneous=False, row_spacing=10, column_spacing=10)
         base_grid.set_border_width(10)
         
@@ -431,23 +431,23 @@ class App(Gtk.Window):
         self.current_rgb = (255, 0, 0)
         base_grid.attach(self.col_prev_area, 0, 0, 2, 1)
 
-        mode_label = Gtk.Label(label="Sélectionner le mode :")
+        mode_label = Gtk.Label(label="Select Mode:")
         base_grid.attach(mode_label, 0, 1, 1, 1)
         self.mode_sel = Gtk.ComboBoxText()
-        modes = ["Cycle fluide", "Couleur statique", "Respiration", "Vague arc-en-ciel", "Flash aléatoire", "Ambilight"]
+        modes = ["Fluid Cycle", "Static Color", "Breathing", "Rainbow Wave", "Random Flash", "Ambilight"]
         for mode in modes:
             self.mode_sel.append_text(mode)
         self.mode_sel.set_active(0)
         self.mode_sel.connect("changed", self.on_mode_chg)
         base_grid.attach(self.mode_sel, 1, 1, 1, 1)
 
-        self.start_btn = Gtk.Button(label="Démarrer")
+        self.start_btn = Gtk.Button(label="Start")
         self.start_btn.connect("clicked", self.toggle_cyc)
         base_grid.attach(self.start_btn, 0, 2, 2, 1)
         
         main_box.pack_start(base_grid, False, False, 0)
         
-        # Conteneur pour les sliders qui s'affichent dynamiquement
+        # Container for dynamically displayed sliders
         self.sliders_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
         main_box.pack_start(self.sliders_box, False, False, 0)
 
@@ -456,27 +456,27 @@ class App(Gtk.Window):
         self.on_mode_chg(self.mode_sel)
 
     def create_all_control_frames(self):
-        """Crée tous les cadres de contrôle, mais les cache par défaut."""
-        # Frame pour la couleur statique
-        self.static_col_frame = Gtk.Frame(label="Couleur statique")
+        """Creates all control frames, but hides them by default."""
+        # Frame for static color
+        self.static_col_frame = Gtk.Frame(label="Static Color")
         self.static_col_grid = Gtk.Grid(row_spacing=8, column_spacing=10)
         self.static_col_grid.set_border_width(15)
         self.static_col_frame.add(self.static_col_grid)
         self.sliders_box.pack_start(self.static_col_frame, False, False, 0)
         
-        self.r_slider = self.create_color_slider("Rouge :", 0)
-        self.g_slider = self.create_color_slider("Vert :", 1)
-        self.b_slider = self.create_color_slider("Bleu :", 2)
+        self.r_slider = self.create_color_slider("Red:", 0)
+        self.g_slider = self.create_color_slider("Green:", 1)
+        self.b_slider = self.create_color_slider("Blue:", 2)
         self.r_slider.set_value(self.ctrl.static_rgb[0])
         self.g_slider.set_value(self.ctrl.static_rgb[1])
         self.b_slider.set_value(self.ctrl.static_rgb[2])
 
-        # Slider pour cycle fluide (et modes similaires)
-        self.cycle_speed_frame = Gtk.Frame(label="Vitesse du cycle")
+        # Slider for fluid cycle (and similar modes)
+        self.cycle_speed_frame = Gtk.Frame(label="Cycle Speed")
         self.cycle_speed_frame.set_border_width(5)
         cycle_grid = Gtk.Grid(row_spacing=5, column_spacing=10)
         cycle_grid.set_border_width(10)
-        cycle_label = Gtk.Label(label="Vitesse :")
+        cycle_label = Gtk.Label(label="Speed:")
         self.cycle_speed_slider = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 1, 100, 1)
         self.cycle_speed_slider.set_value(50)
         self.cycle_speed_slider.set_hexpand(True)
@@ -488,12 +488,12 @@ class App(Gtk.Window):
         self.cycle_speed_frame.add(cycle_grid)
         self.sliders_box.pack_start(self.cycle_speed_frame, False, False, 0)
         
-        # Slider pour respiration
-        self.breathing_speed_frame = Gtk.Frame(label="Vitesse de respiration")
+        # Slider for breathing
+        self.breathing_speed_frame = Gtk.Frame(label="Breathing Speed")
         self.breathing_speed_frame.set_border_width(5)
         breathing_grid = Gtk.Grid(row_spacing=5, column_spacing=10)
         breathing_grid.set_border_width(10)
-        breathing_label = Gtk.Label(label="Vitesse :")
+        breathing_label = Gtk.Label(label="Speed:")
         self.breathing_speed_slider = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 1, 50, 1)
         self.breathing_speed_slider.set_value(25)
         self.breathing_speed_slider.set_hexpand(True)
@@ -505,12 +505,12 @@ class App(Gtk.Window):
         self.breathing_speed_frame.add(breathing_grid)
         self.sliders_box.pack_start(self.breathing_speed_frame, False, False, 0)
         
-        # Slider pour Ambilight FPS
-        self.ambilight_fps_frame = Gtk.Frame(label="FPS Ambilight")
+        # Slider for Ambilight FPS
+        self.ambilight_fps_frame = Gtk.Frame(label="Ambilight FPS")
         self.ambilight_fps_frame.set_border_width(5)
         ambilight_grid = Gtk.Grid(row_spacing=5, column_spacing=10)
         ambilight_grid.set_border_width(10)
-        ambilight_label = Gtk.Label(label="FPS :")
+        ambilight_label = Gtk.Label(label="FPS:")
         self.ambilight_fps_slider = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 5, 60, 5)
         self.ambilight_fps_slider.set_value(30)
         self.ambilight_fps_slider.set_hexpand(True)
@@ -522,12 +522,12 @@ class App(Gtk.Window):
         self.ambilight_fps_frame.add(ambilight_grid)
         self.sliders_box.pack_start(self.ambilight_fps_frame, False, False, 0)
         
-        # Slider pour flash et vague
-        self.flash_freq_frame = Gtk.Frame(label="Fréquence")
+        # Slider for flash and wave
+        self.flash_freq_frame = Gtk.Frame(label="Frequency")
         self.flash_freq_frame.set_border_width(5)
         flash_grid = Gtk.Grid(row_spacing=5, column_spacing=10)
         flash_grid.set_border_width(10)
-        flash_label = Gtk.Label(label="Fréquence :")
+        flash_label = Gtk.Label(label="Frequency:")
         self.flash_freq_slider = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 1, 50, 1)
         self.flash_freq_slider.set_value(25)
         self.flash_freq_slider.set_hexpand(True)
@@ -540,7 +540,7 @@ class App(Gtk.Window):
         self.sliders_box.pack_start(self.flash_freq_frame, False, False, 0)
         
     def create_color_slider(self, label_text, row):
-        """Crée un slider de couleur plus large avec un meilleur espacement"""
+        """Creates a wider color slider with better spacing"""
         label = Gtk.Label(label=label_text, halign=Gtk.Align.START)
         label.set_size_request(80, -1)
         
@@ -560,19 +560,19 @@ class App(Gtk.Window):
         return slider
 
     def upd_cycle_speed(self, scale):
-        """Met à jour la vitesse pour les cycles fluides et similaires"""
+        """Updates the speed for fluid and similar cycles"""
         speed_val = int(scale.get_value())
         self.cycle_speed_val_label.set_text(str(speed_val))
         
-        # Conversion: 1-100 vers delay optimal (beaucoup plus rapide)
-        # Ajustement des valeurs pour un délai encore plus court
+        # Conversion: 1-100 to optimal delay (much faster)
+        # Adjustment of values for an even shorter delay
         max_delay = 0.005
         min_delay = 0.00001
         norm_speed = (speed_val - 1) / 99
         self.ctrl.delay = max_delay - (norm_speed * (max_delay - min_delay))
 
     def upd_breathing_speed(self, scale):
-        """Met à jour la vitesse pour la respiration"""
+        """Updates the speed for breathing"""
         speed_val = int(scale.get_value())
         self.breathing_speed_val_label.set_text(str(speed_val))
         
@@ -582,13 +582,13 @@ class App(Gtk.Window):
         self.ctrl.delay = max_delay - (norm_speed * (max_delay - min_delay))
 
     def upd_ambilight_fps(self, scale):
-        """Met à jour les FPS pour Ambilight"""
+        """Updates the FPS for Ambilight"""
         fps_val = int(scale.get_value())
         self.ambilight_fps_val_label.set_text(str(fps_val))
         self.ctrl.ambilight_target_fps = fps_val
 
     def upd_flash_freq(self, scale):
-        """Met à jour la fréquence pour flash et vague"""
+        """Updates the frequency for flash and wave"""
         freq_val = int(scale.get_value())
         self.flash_freq_val_label.set_text(str(freq_val))
         
@@ -726,10 +726,10 @@ class App(Gtk.Window):
     def toggle_cyc(self, button):
         if self.ctrl.run or self.ctrl.ambilight_running:
             self.ctrl.stop_cycle()
-            button.set_label("Démarrer")
+            button.set_label("Start")
         else:
             self.ctrl.start_cycle()
-            button.set_label("Arrêter")
+            button.set_label("Stop")
 
     def upd_static_col(self, scale):
         r = int(self.r_slider.get_value())
@@ -743,9 +743,9 @@ class App(Gtk.Window):
         self.ctrl.static_rgb = (r, g, b)
         self.upd_col_prev(r, g, b)
 
-        if self.ctrl.run and self.ctrl.mode == "Couleur statique":
+        if self.ctrl.run and self.ctrl.mode == "Static Color":
             self.ctrl._set_col(r, g, b)
-        elif self.ctrl.run and self.ctrl.mode == "Respiration":
+        elif self.ctrl.run and self.ctrl.mode == "Breathing":
             self.ctrl.stop_cycle()
             self.ctrl.start_cycle()
             
@@ -754,28 +754,28 @@ class App(Gtk.Window):
         if not new_mode:
             return
             
-        print(f"Mode changé pour : {new_mode}")
+        print(f"Mode changed to: {new_mode}")
         
         if self.ctrl.run or self.ctrl.ambilight_running:
             self.ctrl.stop_cycle()
-            self.start_btn.set_label("Démarrer")
+            self.start_btn.set_label("Start")
         
         self.ctrl.mode = new_mode
 
-        # Masquer tous les contrôles d'abord
+        # Hide all controls first
         self.static_col_frame.set_visible(False)
         self.cycle_speed_frame.set_visible(False)
         self.breathing_speed_frame.set_visible(False)
         self.ambilight_fps_frame.set_visible(False)
         self.flash_freq_frame.set_visible(False)
 
-        # Afficher les contrôles appropriés selon le mode
-        if new_mode == "Couleur statique":
+        # Display the appropriate controls for the mode
+        if new_mode == "Static Color":
             self.static_col_frame.set_visible(True)
             r, g, b = self.ctrl.static_rgb
             self.upd_col_prev(r, g, b)
             
-        elif new_mode == "Respiration":
+        elif new_mode == "Breathing":
             self.static_col_frame.set_visible(True)
             self.breathing_speed_frame.set_visible(True)
             self.upd_col_prev(self.ctrl.static_rgb[0], self.ctrl.static_rgb[1], self.ctrl.static_rgb[2])
@@ -786,18 +786,18 @@ class App(Gtk.Window):
             self.upd_col_prev(128, 128, 128)
             self.upd_ambilight_fps(self.ambilight_fps_slider)
             
-        elif new_mode in ["Flash aléatoire", "Vague arc-en-ciel"]:
+        elif new_mode in ["Random Flash", "Rainbow Wave"]:
             self.flash_freq_frame.set_visible(True)
             self.upd_col_prev(128, 128, 128)
             self.upd_flash_freq(self.flash_freq_slider)
             
-        else: # Cycle fluide
+        else: # Fluid Cycle
             self.cycle_speed_frame.set_visible(True)
             self.upd_col_prev(255, 0, 0)
             self.upd_cycle_speed(self.cycle_speed_slider)
 
     def on_close(self, widget):
-        print("Fermeture de l'application...")
+        print("Closing application...")
         self.ctrl.stop_cycle()
         Gtk.main_quit()
         
@@ -807,13 +807,4 @@ class App(Gtk.Window):
             flags=0,
             message_type=Gtk.MessageType.ERROR,
             buttons=Gtk.ButtonsType.OK,
-            text="Erreur",
         )
-        dialog.format_secondary_text(message)
-        dialog.run()
-        dialog.destroy()
-        
-if __name__ == '__main__':
-    app = App()
-    app.show_all()
-    Gtk.main()
